@@ -59,6 +59,7 @@ public class PlayerController : MonoBehaviour
     {
         CheckSprint();
         CheckCrouch();
+        CheckJump();
 
         MoveCamera();
     }
@@ -100,6 +101,14 @@ public class PlayerController : MonoBehaviour
         transform.localScale = new Vector3(_baseScale.x, _isCrouching ? _crouchHeight : _baseScale.y, _baseScale.z);
     }
 
+    private void CheckJump()
+    {
+        if(Input.ReadJump() && _rb.linearVelocity.y < 0.1f)
+        {
+            _rb.AddForce(Vector3.up * _jumpForce, ForceMode.Impulse);
+        }
+    }
+
     private void MoveBody()
     {
         Vector2 movement = Input.ReadMove();
@@ -115,7 +124,7 @@ public class PlayerController : MonoBehaviour
 
     private void MoveCamera()
     {
-        Vector2 mouseDelta = Input.ReadMouseDelta();
+        Vector2 mouseDelta = Input.ReadLook();
 
         if (mouseDelta.sqrMagnitude > 0f)
         {

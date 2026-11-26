@@ -9,7 +9,6 @@ public class InputReader : MonoBehaviour
 
     private InputAction Move;
     private InputAction Look;
-    private InputAction Attack;
     private InputAction Interact;
     private InputAction Crouch;
     private InputAction Jump;
@@ -19,8 +18,9 @@ public class InputReader : MonoBehaviour
     private InputAction Item4;
     private InputAction Sprint;
 
+    private InputAction RightClick;
+    private InputAction LeftClick;
     private InputAction Escape;
-    private InputAction MouseDelta;
 
     void Awake()
     {
@@ -51,11 +51,6 @@ public class InputReader : MonoBehaviour
         if (Look == null)
         {
             Debug.LogError($"{gameObject.name} : Look action is missing");
-        }
-        Attack = InputSystem.actions.FindAction("Player/Attack");
-        if (Attack == null)
-        {
-            Debug.LogError($"{gameObject.name} : Attack action is missing");
         }
         Interact = InputSystem.actions.FindAction("Player/Interact");
         if (Interact == null)
@@ -97,12 +92,17 @@ public class InputReader : MonoBehaviour
         {
             Debug.LogError($"{gameObject.name} : Sprint action is missing");
         }
-        MouseDelta = InputSystem.actions.FindAction("Player/MouseDelta");
-        if (MouseDelta == null)
-        {
-            Debug.LogError($"{gameObject.name} : MouseDelta action is missing");
-        }
 
+        RightClick = InputSystem.actions.FindAction("UI/Right Click");
+        if (RightClick == null)
+        {
+            Debug.LogError($"{gameObject.name} : RightClick action is missing");
+        }
+        LeftClick = InputSystem.actions.FindAction("UI/Left Click");
+        if (LeftClick == null)
+        {
+            Debug.LogError($"{gameObject.name} : LeftClick action is missing");
+        }
         Escape = InputSystem.actions.FindAction("UI/Escape");
         if (Escape == null)
         {
@@ -112,7 +112,8 @@ public class InputReader : MonoBehaviour
         
     public Vector2 ReadMove() => Move.ReadValue<Vector2>();
     public Vector2 ReadLook() => Look.ReadValue<Vector2>();
-    public bool ReadAttack() => Attack.WasPressedThisFrame();
+    public bool ReadRightClick() => RightClick.WasPressedThisFrame();
+    public bool ReadLeftClick() => LeftClick.WasPressedThisFrame();
     public bool ReadInteract() => Interact.WasPressedThisFrame();
     public bool ReadCrouch() => _settings.HoldCrouch ? Crouch.IsPressed() : Crouch.WasPressedThisFrame();
     public bool ReadJump() => Jump.WasPressedThisFrame();
@@ -121,7 +122,6 @@ public class InputReader : MonoBehaviour
     public bool ReadItem3() => Item3.WasPressedThisFrame();
     public bool ReadItem4() => Item4.WasPressedThisFrame();
     public bool ReadSprint() => _settings.HoldSprint ? Sprint.IsPressed() : Sprint.WasPressedThisFrame();
-    public Vector2 ReadMouseDelta() => MouseDelta.ReadValue<Vector2>();
 
     public bool ReadEscape() => Escape.WasPressedThisFrame();
 }
