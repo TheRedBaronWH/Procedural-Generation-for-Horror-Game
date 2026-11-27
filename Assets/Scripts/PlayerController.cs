@@ -3,11 +3,11 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    private readonly InputReader Input = InputReader.Instance;
+    private InputReader InputReader => InputReader.Instance;
 
     [Header("Player Settings")]
     [SerializeField] private GameSettings _gameSettings = null;
-    [SerializeField] private Rigidbody _rb = null;
+    [SerializeField] private CharacterController _characterController = null;
     [SerializeField] private Transform _transform = null;
     [SerializeField] private Transform _cameraTransform = null;
 
@@ -16,38 +16,45 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float _sprintModifier = 2f;
     [SerializeField] private float _crouchModifier = 0.5f;
     [SerializeField] private float _crouchHeight = 1f;
-    [SerializeField] private float _jumpForce = 5f;
-
-    private bool _isSprinting = false;
-    private bool _isCrouching = false;
-
     private Vector3 _baseScale;
+
+    [Header("Jump Settings")]
+    [SerializeField] private bool _jumpingEnabled = false;
+    [SerializeField] private float _jumpHeight = 1.5f;
+    [SerializeField] private float _gravity = -9.81f;
+    [SerializeField] private float _fallbackVerticalVelocity = -2f;
 
     [Header("Camera Settings")]
     [SerializeField] private float _cameraUpSpeed = 50f;
     [SerializeField] private float _cameraLeftSpeed = 80f;
-    [SerializeField] private float _minCameraAngle = 90f;
-    [SerializeField] private float _maxCameraAngle = -90f;
+    [SerializeField] private float _minCameraAngle = -90f;
+    [SerializeField] private float _maxCameraAngle = 90f;
+
+    [Header("Read Inputs")]
     [ShowInInspector][ReadOnly] private float _cameraAngle = 0f;
+    [ShowInInspector][ReadOnly] private bool _isSprinting = false;
+    [ShowInInspector][ReadOnly] private bool _isCrouching = false;
+    [ShowInInspector][ReadOnly] private float _verticalVelocity = 0f;
+
 
     void Start()
     {
-        if(_gameSettings == null)
+        if (_gameSettings == null)
         {
             Debug.LogError($"{gameObject.name} : GameSettings reference is missing");
         }
 
-        if(_rb == null)
+        if (_characterController == null)
         {
-            Debug.LogError($"{gameObject.name} : Rigidbody reference is missing");
+            Debug.LogError($"{gameObject.name} : CharacterController reference is missing");
         }
-        
-        if(_transform == null)
+
+        if (_transform == null)
         {
             Debug.LogError($"{gameObject.name} : Transform reference is missing");
         }
 
-        if(_cameraTransform == null)
+        if (_cameraTransform == null)
         {
             Debug.LogError($"{gameObject.name} : Camera Transform reference is missing");
         }
@@ -57,42 +64,37 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        CheckSprint();
-        CheckCrouch();
-        CheckJump();
+        UpdateSprint();
+        UpdateCrouch();
 
-        MoveCamera();
-    }
-
-    void FixedUpdate()
-    {
+        RotateCamera();
         MoveBody();
     }
 
-    private void CheckSprint()
+    private void UpdateSprint()
     {
         if (_gameSettings.HoldSprint)
         {
-            _isSprinting = Input.ReadSprint();
+            _isSprinting = InputReader.ReadSprint();
         }
         else
         {
-            if (Input.ReadSprint())
+            if (InputReader.ReadSprint())
             {
                 _isSprinting = !_isSprinting;
             }
         }
     }
 
-    private void CheckCrouch()
+    private void UpdateCrouch()
     {
         if (_gameSettings.HoldCrouch)
         {
-            _isCrouching = Input.ReadCrouch();
+            _isCrouching = InputReader.ReadCrouch();
         }
         else
         {
-            if (Input.ReadCrouch())
+            if (InputReader.ReadCrouch())
             {
                 _isCrouching = !_isCrouching;
             }
@@ -101,37 +103,49 @@ public class PlayerController : MonoBehaviour
         transform.localScale = new Vector3(_baseScale.x, _isCrouching ? _crouchHeight : _baseScale.y, _baseScale.z);
     }
 
-    private void CheckJump()
-    {
-        if(Input.ReadJump() && _rb.linearVelocity.y < 0.1f)
-        {
-            _rb.AddForce(Vector3.up * _jumpForce, ForceMode.Impulse);
-        }
-    }
-
     private void MoveBody()
     {
-        Vector2 movement = Input.ReadMove();
+        Vector2 moveInput = InputReader.ReadMove();
 
-        if (movement.sqrMagnitude > 0f)
+        if (moveInput.sqrMagnitude > 1f)
         {
-            movement = (_isCrouching ? _crouchModifier : 1f) * (_isSprinting ? _sprintModifier : 1f) * movement;
-            Vector3 moveDirection = _transform.right * movement.x + _transform.forward * movement.y;
-            _rb.MovePosition(_transform.position + _speed * Time.deltaTime * moveDirection);
-            _rb.angularVelocity = Vector3.zero;
+            moveInput.Normalize();
         }
+        moveInput = (_isCrouching ? _crouchModifier : 1f) * (_isSprinting ? _sprintModifier : 1f) * moveInput;
+        Vector3 moveDirection = (_transform.right * moveInput.x + _transform.forward * moveInput.y) * _speed;
+
+        if(_jumpingEnabled)
+        {
+            if (_characterController.isGrounded && _verticalVelocity < 0f)
+            {
+                _verticalVelocity = _fallbackVerticalVelocity;
+            }
+            if (InputReader.ReadJump() && _characterController.isGrounded)
+            {
+                _verticalVelocity = Mathf.Sqrt(_jumpHeight * 2f * Mathf.Abs(_gravity));
+            }
+            _verticalVelocity += _gravity * Time.deltaTime;
+
+            moveDirection += Vector3.up * _verticalVelocity;
+        }
+
+        _characterController.Move(moveDirection * Time.deltaTime);
     }
 
-    private void MoveCamera()
+    private void RotateCamera()
     {
-        Vector2 mouseDelta = Input.ReadLook();
+        Vector2 mouseDelta = InputReader.ReadLook();
 
-        if (mouseDelta.sqrMagnitude > 0f)
+        if (mouseDelta.sqrMagnitude > 1f)
         {
-            _cameraAngle -= mouseDelta.y * _gameSettings.Sensitivity * _cameraUpSpeed * Time.deltaTime;
-            _cameraAngle = Mathf.Clamp(_cameraAngle, _minCameraAngle, _maxCameraAngle);
-            _cameraTransform.localRotation = Quaternion.Euler(_cameraAngle, 0f, 0f);
-            _rb.MoveRotation(Quaternion.Euler(_transform.rotation.eulerAngles + Vector3.up * mouseDelta.x * _gameSettings.Sensitivity * _cameraLeftSpeed * Time.deltaTime));
+            mouseDelta.Normalize();
         }
+
+        _cameraAngle -= mouseDelta.y * _gameSettings.Sensitivity * _cameraUpSpeed * Time.deltaTime;
+        _cameraAngle = Mathf.Clamp(_cameraAngle, _minCameraAngle, _maxCameraAngle);
+        _cameraTransform.localRotation = Quaternion.Euler(_cameraAngle, 0f, 0f);
+
+        float rotation = mouseDelta.x * _gameSettings.Sensitivity * _cameraLeftSpeed * Time.deltaTime;
+        _transform.Rotate(Vector3.up * rotation);
     }
 }
