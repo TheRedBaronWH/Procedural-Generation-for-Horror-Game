@@ -13,9 +13,9 @@ public class PlayerController : MonoBehaviour
 
     [Header("Movement Settings")]
     [SerializeField] private float _speed = 5f;
-    [SerializeField] private float _sprintModifier = 2f;
-    [SerializeField] private float _crouchModifier = 0.5f;
-    [SerializeField] private float _crouchHeight = 1f;
+    [SerializeField] private float _speedSprintModifier = 2f;
+    [SerializeField] private float _speedCrouchModifier = 0.5f;
+    [SerializeField] private float _crouchHeightModifier = 0.6f;
     private Vector3 _baseScale;
 
     [Header("Jump Settings")]
@@ -100,7 +100,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        transform.localScale = new Vector3(_baseScale.x, _isCrouching ? _crouchHeight : _baseScale.y, _baseScale.z);
+        transform.localScale = new Vector3(_baseScale.x, _baseScale.y * (_isCrouching ? _crouchHeightModifier : 1f), _baseScale.z);
     }
 
     private void MoveBody()
@@ -111,7 +111,7 @@ public class PlayerController : MonoBehaviour
         {
             moveInput.Normalize();
         }
-        moveInput = (_isCrouching ? _crouchModifier : 1f) * (_isSprinting ? _sprintModifier : 1f) * moveInput;
+        moveInput = (_isCrouching ? _speedCrouchModifier : 1f) * (_isSprinting ? _speedSprintModifier : 1f) * moveInput;
         Vector3 moveDirection = (_transform.right * moveInput.x + _transform.forward * moveInput.y) * _speed;
 
         if(_jumpingEnabled)
@@ -141,11 +141,11 @@ public class PlayerController : MonoBehaviour
             mouseDelta.Normalize();
         }
 
-        _cameraAngle -= mouseDelta.y * _gameSettings.Sensitivity * _cameraUpSpeed * Time.deltaTime;
+        _cameraAngle -= mouseDelta.y * _gameSettings.Sensitivity * _cameraUpSpeed;
         _cameraAngle = Mathf.Clamp(_cameraAngle, _minCameraAngle, _maxCameraAngle);
         _cameraTransform.localRotation = Quaternion.Euler(_cameraAngle, 0f, 0f);
 
-        float rotation = mouseDelta.x * _gameSettings.Sensitivity * _cameraLeftSpeed * Time.deltaTime;
+        float rotation = mouseDelta.x * _gameSettings.Sensitivity * _cameraLeftSpeed;
         _transform.Rotate(Vector3.up * rotation);
     }
 }
